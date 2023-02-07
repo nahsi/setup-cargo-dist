@@ -22,7 +22,6 @@ jobs:
         id: release
         uses: google-github-actions/release-please-action@v3
         with:
-          token: ${{ secrets.FLUENCEBOT_RELEASE_PLEASE_PAT }}
           command: manifest
           config-file: .github/release-please/config.json
           manifest-file: .github/release-please/manifest.json
@@ -32,12 +31,3 @@ jobs:
         env:
           RELEASE_PLEASE_OUTPUT: ${{ toJSON(steps.release.outputs) }}
         run: echo "${RELEASE_PLEASE_OUTPUT}" | jq
-
-  retag:
-    if: needs.release-please.outputs.release-created
-    needs: release-please
-    uses: ./.github/workflows/publish.yml
-    with:
-      tag: ${{ needs.release-please.outputs.tag-name }}
-      version: ${{ needs.release-please.outputs.version }}
-      update-node-distro: ${{ needs.release-please.outputs.release-created }}
