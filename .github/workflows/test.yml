@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  pull_request:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-12
+          - ubuntu-22.04
+          - windows-2022
+        version:
+          - latest
+          - 0.0.2
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup cargo-cli
+        uses: ./
+        with:
+          version: ${{ matrix.version }}
+
+      - name: Ensure cargo-dist is installed
+        shell: bash
+        run: cargo-dist --help
