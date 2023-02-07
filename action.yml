@@ -1,5 +1,5 @@
 name: Setup cargo-dist
-description: Install and setup a version of the cargo-dist
+description: Install and setup a version of cargo-dist
 
 inputs:
   version:
