@@ -1,0 +1,82 @@
+name: Setup cargo-dist
+description: Install and setup a version of the cargo-dist
+
+inputs:
+  version:
+    required: false
+    description: The version of cargo-dist to install
+    default: latest
+
+runs:
+  using: composite
+  steps:
+    - id: prepare
+      shell: bash
+      run: |
+        bin="cargo-dist"
+
+        case ${{ runner.os }} in
+          Linux)
+            platform="unknown-linux-gnu"
+            extension="tar.xz"
+          ;;
+          Windows)
+            platform="pc-windows-msvc"
+            extension="zip"
+            bin="${bin}.exe"
+          ;;
+          macOS)
+            platform="apple-darwin"
+            extension="tar.xz"
+          ;;
+          *)
+            echo "Unsuported OS: ${{ runner.os }}"
+            exit 1
+          ;;
+        esac
+
+        if [[ "${{ inputs.version }}" == "latest" ]]; then
+          tries=10
+          until [[ $version != "null" ]] && [[ -n $version ]]; do
+            ((tries--))
+            version="$(curl -s https://api.github.com/repos/axodotdev/cargo-dist/releases/latest | jq -r '.tag_name')"
+            ((tries)) || exit 1
+            sleep 3
+          done
+        else
+          version="${{ inputs.version }}"
+          version="v${version#v}"
+        fi
+
+        dist="cargo-dist-${version}-x86_64-${platform}"
+        archive="${dist}.${extension}"
+
+        echo "version=${version}" >> $GITHUB_OUTPUT
+        echo "dist=${dist}" >> $GITHUB_OUTPUT
+        echo "archive=${archive}" >> $GITHUB_OUTPUT
+        echo "bin=${bin}" >> $GITHUB_OUTPUT
+
+    - id: install
+      shell: bash
+      run: |
+        VERSION=${{ steps.prepare.outputs.version }}
+        BIN=${{ steps.prepare.outputs.bin }}
+        ARCHIVE=${{ steps.prepare.outputs.archive }}
+        DIST=${{ steps.prepare.outputs.dist }}
+
+        echo "Installing cargo-dist ${VERSION} ..."
+
+        BIN_DIR="${RUNNER_TEMP}/cargo-dist"
+        mkdir -p "${BIN_DIR}"
+
+        curl -L -sS "https://github.com/axodotdev/cargo-dist/releases/download/${VERSION}/${ARCHIVE}" -o "${RUNNER_TEMP}/${ARCHIVE}"
+
+        case ${{ runner.os }} in
+          Linux|macOS)
+            tar xvf "${RUNNER_TEMP}/${ARCHIVE}" -C "${BIN_DIR}" --strip-components=1 "${DIST}/${BIN}"
+          ;;
+          Windows)
+            7z e "${RUNNER_TEMP}/${ARCHIVE}" -o"${BIN_DIR}" "${BIN}"
+        esac
+
+        echo "${BIN_DIR}" >> $GITHUB_PATH
